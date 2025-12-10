@@ -16,7 +16,8 @@ namespace Teknik_Servis_Otomasyon_Sistemi_Proje_1_
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Teknisyen_Ana_Panel());
+            Application.Run(new Kullanici_Giris());
         }
     }
 }
+
