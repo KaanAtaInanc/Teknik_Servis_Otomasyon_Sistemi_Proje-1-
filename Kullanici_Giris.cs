@@ -1,4 +1,4 @@
-﻿using MetroFramework.Forms;
+using MetroFramework.Forms;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -152,87 +152,84 @@ namespace Teknik_Servis_Otomasyon_Sistemi_Proje_1_
 
         private void BtnGiris_Click(object sender, EventArgs e)
         {
-            //Buttona basıldığında öncelikle sırası ile kullanıcı adı ve şifre alanlarının boş olup olmadığını kontrolü yapılıyor
-            if (string.IsNullOrWhiteSpace(this.txtUsername.Text))
+            // Boş alan kontrolü (Senin kodundaki gibi kalsın)
+            if (string.IsNullOrWhiteSpace(this.txtUsername.Text) || string.IsNullOrWhiteSpace(this.txtPassword.Text))
             {
-                MessageBox.Show("Lütfen kullanıcı adı giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                this.txtUsername.Focus(); //Kullanıcı adı ilgili textbox boş ise hata ver
+                MessageBox.Show("Lütfen kullanıcı adı ve şifre giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(this.txtPassword.Text))
-            {
-                MessageBox.Show("Lütfen şifre giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                this.txtPassword.Focus(); //Şifre ilgili textbox boş ise hata ver
-                return;
-            }
-            //Gerekli Database Bağlantıları
             try
             {
-                if (baglanti.State == System.Data.ConnectionState.Closed) //SQL Bağlantısı kontrolü yapılıyor bağlantı kapalı ise açık hale getirmektedir.
+                if (baglanti.State == System.Data.ConnectionState.Closed)
                     baglanti.Open();
 
                 string sorgu = "SELECT p.Personel_ID, p.Ad, p.Soyad, r.Rol_Ad, p.İlkGirisMi " +
                                "FROM Personeller p " +
                                "INNER JOIN Roller r ON p.Rol_ID = r.Rol_ID " +
                                "WHERE p.Kullanici_Ad = @p1 AND p.SifreHash = @p2 AND p.AktifMi = 1";
-                //İlgili personel tablosu ile roller tablosunu birleştirip kullanıcı adı ve şifre bilgilerini kontrol eden SQL sorgusu
 
-                System.Data.SqlClient.SqlCommand komut = new System.Data.SqlClient.SqlCommand(sorgu, baglanti); //SQL Sorgusu oluşturuluyor
+                System.Data.SqlClient.SqlCommand komut = new System.Data.SqlClient.SqlCommand(sorgu, baglanti);
+                komut.Parameters.AddWithValue("@p1", txtUsername.Text.Trim());
+                komut.Parameters.AddWithValue("@p2", txtPassword.Text.Trim());
 
-                komut.Parameters.AddWithValue("@p1", txtUsername.Text.Trim()); //.Trim metodu ile kullanıcı adı ve şifre alanlarında kullanıcı girişte boşluk bırakırsa bu boşlukları kaldırıyor
-                komut.Parameters.AddWithValue("@p2", txtPassword.Text.Trim()); //Boşlukların kaldırılması ile birlikte program çökmesini engellemekteyiz.
-                                                                               //Kullanıcı adı ve şifre bilgilerini parametre olarak alıp sorguyu çalıştırıyor//
-                System.Data.SqlClient.SqlDataReader dr = komut.ExecuteReader(); //Gerekli SQL Sorgusunu Çalıştırılmasıdır 
+                System.Data.SqlClient.SqlDataReader dr = komut.ExecuteReader();
 
                 if (dr.Read())
                 {
-                    Oturum.PersonelID = int.Parse(dr["Personel_ID"].ToString()); //Bu kısmın amacı oturum açan personelin ID'sini Oturum sınıfındaki static değişkene atamaktır. //1
-                    Oturum.AdSoyad = dr["Ad"].ToString() + " " + dr["Soyad"].ToString(); //Program çalıştığı sürece personlin ID sini ve ad soyad bilgisini tutmaktadır. //2
-                    Oturum.Rol = dr["Rol_Ad"].ToString(); //3
-
-                    //1 numaralı satırda kullanıcının ID sini ınteger olarak alıp Oturum.PersonelID ye atamaktadır. Aynı zamanda bu veri tüm kimlik doğrulama da kullanılmaktadır
-                    //2 numaralı satırda kullanıcının Ad ve Soyad bilgilerini alıp Oturum.AdSoyad a atamaktadır. Bu veri kullanıcıya hoşgeldiniz mesajında gösterilmektedir.
-                    //3 numaralı satırda kullanıcının rol bilgisini alıp Oturum.Rol a atamaktadır. Bu veri kullanıcının yetkilerini belirlemek için kullanılmaktadır. Aynı zamanda
-                    //hangi panellere erişebileceğini belirlemektedir.
-
-                    //Kullanıcı ilk kez giriş yapıyorsa güvenlik nedeniyle şifre değiştirme işlemi yapılması gerekmektedir. bu satırda ise bu kontrol yapılır
+                    // Verileri al
+                    Oturum.PersonelID = int.Parse(dr["Personel_ID"].ToString());
+                    Oturum.AdSoyad = dr["Ad"].ToString() + " " + dr["Soyad"].ToString();
+                    Oturum.Rol = dr["Rol_Ad"].ToString();
                     bool ilkGiris = bool.Parse(dr["İlkGirisMi"].ToString());
-                    dr.Close(); //Bağlantıyı kapatır başka sorgu gerekirse onun çalıştırılması içindir
 
+                    dr.Close(); // Reader işimiz bitti, kapattık.
+
+                    // --- KRİTİK DÜZELTME BURASI ---
                     if (ilkGiris)
                     {
-                        MessageBox.Show("İlk girişiniz! Güvenlik için şifrenizi değiştirin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        //İlk Giriş Algılanırsa Kullanıcı zorunlu olarak şifre değiştirmesi uyarısı gösterilir
+                        MessageBox.Show("İlk girişiniz! Güvenlik için şifrenizi değiştirmeniz gerekmektedir.",
+                                        "Şifre Değişikliği", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                        // BURADA YAPMAN GEREKENLER:
+                        // 1. Şifre değiştirme formunu açmalısın (Eğer formun varsa).
+                        // SifreDegistirmeFormu frmSifre = new SifreDegistirmeFormu();
+                        // frmSifre.Show();
+
+                        // 2. Mevcut formu gizle
+                        // this.Hide(); 
+
+                        // 3. EN ÖNEMLİSİ: return diyerek kodun aşağı inip ana paneli açmasını engelle!
+                        return;
                     }
+                    // -----------------------------
 
+                    // Eğer ilk giriş değilse normal akış devam eder:
                     MessageBox.Show($"Hoşgeldiniz Sayın {Oturum.AdSoyad}", "Giriş Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    //İlk Girişi değilse normal giriş mesajı gösterilir ve ilgili panele yönlendirilir
-                    this.Hide();
 
+                    this.Hide(); // Giriş formunu gizle
+
+                    // Rol Kontrolü ve Yönlendirme
                     if (Oturum.Rol == "Admin")
                     {
-                        Admin_Ana_Panel frm = new Admin_Ana_Panel(); //Girişin kullanıcı Admin ise Admin Ana Panele yönlendirilir
+                        Admin_Ana_Panel frm = new Admin_Ana_Panel();
                         frm.Show();
-                        this.Hide();
                     }
                     else if (Oturum.Rol == "Teknisyen")
                     {
-                        Teknisyen_Ana_Panel frm = new Teknisyen_Ana_Panel(); //Girişin kullanıcı Teknisyen ise Teknisyen Ana Panele yönlendirilir
+                        Teknisyen_Ana_Panel frm = new Teknisyen_Ana_Panel();
                         frm.Show();
-                        this.Hide();
                     }
                     else if (Oturum.Rol == "Danisma")
                     {
-                        Danisma_Panel frm = new Danisma_Panel(); //Girişin kullanıcı Danışma ise Danışma Panele yönlendirilir
+                        Danisma_Panel frm = new Danisma_Panel();
                         frm.Show();
-                        this.Hide();
                     }
                 }
                 else
                 {
                     dr.Close();
-                    MessageBox.Show("Kullanıcı adı veya şifre hatalı!", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error); //Kullanıcı adı veya şifre hatalı ise hata mesajı gösterilir
+                    MessageBox.Show("Kullanıcı adı veya şifre hatalı!", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
 
                 baglanti.Close();
@@ -244,5 +241,6 @@ namespace Teknik_Servis_Otomasyon_Sistemi_Proje_1_
                     baglanti.Close();
             }
         }
+    
     }
 }
